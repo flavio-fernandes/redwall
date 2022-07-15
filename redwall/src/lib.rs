@@ -31,7 +31,21 @@ impl NodeFirewalls {
         if self.docs.is_empty() {
             return Err("Empty YAML supplied");
         }
-    
+
+        for doc in &self.docs {
+            if doc["kind"].is_badvalue() {
+                return Err("Unexpected yaml doc: no kind");
+            }
+            match doc["kind"].as_str().unwrap() {
+                "NodeEndpoint" => (),
+                "IngressNodeFirewall" => (),
+                other_kind => {
+                    eprintln!("Kind {} is not supported", other_kind);
+                    return Err("Unexpected kind in yaml");
+                },
+            }
+        }
+
         Ok(())        
     }
 }

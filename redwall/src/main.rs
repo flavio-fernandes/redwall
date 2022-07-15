@@ -44,14 +44,11 @@ fn run(opt: &Opt) -> Result<(), Box<dyn Error>> {
    let file_contents: String = fs::read_to_string(&opt.filename)?;  
    let yamls: Vec<Yaml> = YamlLoader::load_from_str(&file_contents)?;
 
-//    if yamls.is_empty() {
-//        panic!("Empty YAML supplied");
-//    }
 
    let yaml: &Yaml = yamls.get(0).unwrap();
 
    if !is_yaml_valid(yaml) {
-    panic!("YAML file supplied is not valid");
+    panic!("XXX YAML file supplied is not valid");
    }
 
    let interfaces: Vec<&str> = get_interfaces(yaml);
