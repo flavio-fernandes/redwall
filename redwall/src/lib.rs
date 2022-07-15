@@ -37,8 +37,16 @@ impl NodeFirewalls {
                 return Err("Unexpected yaml doc: no kind");
             }
             match doc["kind"].as_str().unwrap() {
-                "NodeEndpoint" => (),
-                "IngressNodeFirewall" => (),
+                "NodeEndpoint" => {
+                    if !self.validate_node_endpoint(doc) {
+                        return Err("Invalid NodeEndpoint");
+                    }
+                },
+                "IngressNodeFirewall" => {
+                    if !self.validate_ingress_node_firewall(doc) {
+                        return Err("Invalid IngressNodeFirewall");
+                    }
+                },
                 other_kind => {
                     eprintln!("Kind {} is not supported", other_kind);
                     return Err("Unexpected kind in yaml");
@@ -48,4 +56,13 @@ impl NodeFirewalls {
 
         Ok(())        
     }
+
+    fn validate_node_endpoint(&self, doc: &StrictYaml) -> bool {
+        return true
+    }
+
+    fn validate_ingress_node_firewall(&self, doc: &StrictYaml) -> bool {
+        return true
+    }
+
 }
