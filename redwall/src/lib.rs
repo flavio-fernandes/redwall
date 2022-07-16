@@ -82,7 +82,7 @@ impl NodeFirewallDocs {
 
 pub struct NodeEndpoint {
     pub name: String,
-    // pub labels: Vec<String>,
+    pub labels: HashMap<String, String>,
     pub interfaces: Vec<String>,
 }
 
@@ -94,6 +94,18 @@ impl NodeEndpoint {
         }
 
         let name = String::from_str(doc["metadata"]["name"].as_str().unwrap()).unwrap();
+
+        let mut labels= HashMap::new();
+        match doc["metadata"]["labels"] {
+            StrictYaml::Hash(ref h) => {
+                for (k, v) in h {
+                    let label_key = String::from_str(k.as_str().unwrap()).unwrap().clone();
+                    let label_value = String::from_str(v.as_str().unwrap()).unwrap().clone();
+                    labels.insert(label_key, label_value);
+                }
+            }
+            _ => {}
+        }
 
         let interfaces = doc["spec"]["interfaces"]
             .as_vec()
@@ -107,7 +119,7 @@ impl NodeEndpoint {
                    .clone() })
             .collect();
 
-        Some(NodeEndpoint{name, interfaces})
+        Some(NodeEndpoint{name, labels, interfaces})
     }
 
     pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
