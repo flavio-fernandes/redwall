@@ -183,12 +183,10 @@ impl IngressNodeFirewall {
 
     fn parse_ingress(doc: &StrictYaml) -> Option<Ingress> {
         let mut from_cidr = Vec::new();
-        let mut rules = Vec::new();
-
         match doc["fromCIDRS"] {
             StrictYaml::Array(ref v) => {
-                for x in v {
-                    let cidr = String::from_str(x
+                for cidr_yaml in v {
+                    let cidr = String::from_str(cidr_yaml
                         .as_str()
                         .unwrap())
                         .unwrap()
@@ -205,7 +203,40 @@ impl IngressNodeFirewall {
             return None
         }
 
+        let mut rules = Vec::new();
+        match doc["rules"] {
+            StrictYaml::Array(ref v) => {
+                for rule_yaml in v {
+                    match IngressNodeFirewall::parse_ingress_rule(rule_yaml) {
+                        Some(rule_dict) => { 
+                            if !rule_dict.is_empty() {
+                                rules.push(rule_dict);
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+            }
+            _ => {}
+        }
+
         Some(Ingress{from_cidr, rules})
+    }
+
+    fn parse_ingress_rule(doc: &StrictYaml) -> Option<HashMap<String, String>> {
+        let mut rules_dict= HashMap::new();
+        match doc {
+            StrictYaml::Hash(ref h) => {
+                for (k, v) in h {
+                    let rule_key = String::from_str(k.as_str().unwrap()).unwrap().clone();
+                    let rule_value = String::from_str(v.as_str().unwrap()).unwrap().clone();
+                    rules_dict.insert(rule_key, rule_value);
+                }
+            }
+            // TODO(FF): rule is not a dictionary. Should we complain about that?
+            _ => { return None }
+        }
+        Some(rules_dict)
     }
 
     pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
