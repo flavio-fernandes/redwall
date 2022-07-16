@@ -39,6 +39,9 @@ fn run(opt: &Opt) -> Result<(), Box<dyn Error>> {
     });
     let (eps, fws) = docs.get_eps_and_fws();
 
+    if eps.is_empty() || fws.is_empty() {
+        panic!("node endpoints or ingress node firewall are empty")
+    }
     
    let file_contents: String = fs::read_to_string(&opt.filename)?;  
    let yamls: Vec<Yaml> = YamlLoader::load_from_str(&file_contents)?;

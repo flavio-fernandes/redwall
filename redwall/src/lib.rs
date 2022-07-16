@@ -225,7 +225,15 @@ impl IngressNodeFirewall {
     }
 
     fn compare_ingress_rule_order(a: &HashMap<String, String>, b: &HashMap<String, String>) -> Ordering {
-        Ordering::Less
+        let a_order = match a.get("order") {
+            Some(value) => value.parse::<u64>().unwrap(),
+            _ => 0
+        };
+        let b_order = match b.get("order") {
+            Some(value) => value.parse::<u64>().unwrap(),
+            _ => 0
+        };
+        a_order.cmp(&b_order)
     }
 
     fn parse_ingress_rule(doc: &StrictYaml) -> Option<HashMap<String, String>> {
