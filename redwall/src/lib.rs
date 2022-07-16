@@ -143,9 +143,16 @@ impl NodeEndpoint {
     }
 }
 
+
+pub struct Ingress {
+    from_cidr: Vec<String>,
+    rules: Vec<HashMap<String, String>>,
+}
+
 pub struct IngressNodeFirewall {
     pub name: String,
     pub node_endpoint: String,
+    pub ingresses: Vec<Ingress>,
 }
 
 impl IngressNodeFirewall {
@@ -158,7 +165,47 @@ impl IngressNodeFirewall {
         let name = String::from_str(doc["metadata"]["name"].as_str().unwrap()).unwrap();
         let node_endpoint = String::from_str(doc["metadata"]["annotations"]["node-endpoint"].as_str().unwrap()).unwrap();
 
-        Some(IngressNodeFirewall{name, node_endpoint})
+        let mut ingresses = Vec::new();
+        match doc["spec"]["ingress"] {
+            StrictYaml::Array(ref v) => {
+                for x in v {
+                    match IngressNodeFirewall::parse_ingress(x) {
+                        Some(ingress) => { ingresses.push(ingress); },
+                        _ => {},
+                    }
+                }
+            },
+            _ => {}
+        }
+
+        Some(IngressNodeFirewall{name, node_endpoint, ingresses})
+    }
+
+    fn parse_ingress(doc: &StrictYaml) -> Option<Ingress> {
+        let mut from_cidr = Vec::new();
+        let mut rules = Vec::new();
+
+        match doc["fromCIDRS"] {
+            StrictYaml::Array(ref v) => {
+                for x in v {
+                    let cidr = String::from_str(x
+                        .as_str()
+                        .unwrap())
+                        .unwrap()
+                        .clone();
+
+                    from_cidr.push(cidr);
+                }
+            }
+            // fromCIDRS should be present
+            _ => { return None }
+        }
+        // fromCIDRS should have one or more prefixes
+        if from_cidr.is_empty() {
+            return None
+        }
+
+        Some(Ingress{from_cidr, rules})
     }
 
     pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
