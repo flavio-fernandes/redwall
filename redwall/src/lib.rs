@@ -1,0 +1,161 @@
+extern crate strict_yaml_rust;
+use std::{fs, error::Error, str::FromStr, collections::HashMap};
+
+use strict_yaml_rust::{StrictYamlLoader, StrictYamlEmitter, StrictYaml};
+
+pub struct NodeFirewallDocs {
+    pub raw: String,
+    pub raw_docs: Vec<String>,
+    pub docs: Vec<StrictYaml>,
+}
+
+impl NodeFirewallDocs {
+    pub fn new(filename: &String) -> Result<NodeFirewallDocs, Box<dyn Error>> {
+        let raw: String = fs::read_to_string(filename)?;  
+        let docs = StrictYamlLoader::load_from_str(&raw)?;
+
+        let mut raw_docs = Vec::new();
+        for doc in &docs {
+            // Dump the YAML object
+            let mut raw_doc = String::new();
+            {
+                let mut emitter = StrictYamlEmitter::new(&mut raw_doc);
+                emitter.dump(doc)?;
+                raw_docs.push(raw_doc);
+            }
+        }
+        Ok(NodeFirewallDocs { raw, raw_docs, docs })
+    }
+
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.docs.is_empty() {
+            return Err("Empty YAML supplied");
+        }
+
+        for doc in &self.docs {
+            if doc["kind"].is_badvalue() {
+                return Err("Unexpected yaml doc: no kind");
+            }
+            match doc["kind"].as_str().unwrap() {
+                "NodeEndpoint" => return NodeEndpoint::validate(doc),
+                other_kind => {
+                    eprintln!("Kind {} is not supported", other_kind);
+                    return Err("Unexpected kind in yaml");
+                },
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn get_eps_and_fws(&self) -> (HashMap<String, NodeEndpoint>, HashMap<String, IngressNodeFirewall>) {
+        let mut eps = HashMap::new();
+        let mut fws = HashMap::new();
+
+        for doc in &self.docs {
+            if doc["kind"].is_badvalue() {
+                continue;
+            }
+            match doc["kind"].as_str().unwrap() {
+                "NodeEndpoint" => {
+                    match NodeEndpoint::new(doc) {
+                        Some(ep) => { eps.insert(ep.name.clone(), ep); },
+                        None => (),
+                    };
+                },
+                "IngressNodeFirewall" => {
+                    match IngressNodeFirewall::new(doc) {
+                        Some(fw) => { fws.insert(fw.name.clone(), fw); },
+                        None => (),
+                    };
+                },
+                other_kind => {
+                    eprintln!("Skiping kind {}: not supported", other_kind);
+                },
+            }
+        }
+
+        (eps, fws)
+    }
+
+}
+
+pub struct NodeEndpoint {
+    pub name: String,
+    // pub labels: Vec<String>,
+    pub interfaces: Vec<String>,
+}
+
+impl NodeEndpoint {
+    pub fn new(doc: &StrictYaml) -> Option<NodeEndpoint> {
+        match NodeEndpoint::validate(doc) {
+            Ok(_) => (),
+            Err(e) => {eprintln!("failed to parse ep: {}", e); return None},
+        }
+
+        let name = String::from_str(doc["metadata"]["name"].as_str().unwrap()).unwrap();
+
+        let interfaces = doc["spec"]["interfaces"]
+            .as_vec()
+            .unwrap()
+            .iter()
+            .map(|i| { 
+                String::from_str(i
+                   .as_str()
+                   .unwrap())
+                   .unwrap()
+                   .clone() })
+            .collect();
+
+        Some(NodeEndpoint{name, interfaces})
+    }
+
+    pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
+        if doc["kind"].is_badvalue() {
+            return Err("Unexpected yaml doc: no kind");
+        }
+        if doc["kind"].as_str().unwrap() != "NodeEndpoint" {
+            return Err("Unexpected kind in yaml");
+        }
+        if doc["metadata"]["name"].is_badvalue() {
+            return Err("Name not found in NodeEndpoint");
+        }
+        if doc["spec"]["interfaces"].is_badvalue() {
+            return Err("Interfaces not found in NodeEndpoint");
+        }
+        if doc["spec"]["interfaces"].as_vec().unwrap().is_empty() {
+            // TODO(FF): maybe this should be ok
+            return Err("Interfaces empty in NodeEndpoint");
+        }
+        Ok(())
+    }
+}
+
+pub struct IngressNodeFirewall {
+    pub name: String,
+    // pub labels: Vec<String>,
+    // pub interfaces: Vec<String>,
+}
+
+impl IngressNodeFirewall {
+    pub fn new(doc: &StrictYaml) -> Option<IngressNodeFirewall> {
+        match IngressNodeFirewall::validate(doc) {
+            Ok(_) => (),
+            Err(e) => {eprintln!("failed to parse fw: {}", e); return None},
+        }
+
+        // Err("Not implemented")
+        None
+    }
+
+    pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
+        if doc["kind"].is_badvalue() {
+            return Err("Unexpected yaml doc: no kind");
+        }
+        if doc["kind"].as_str().unwrap() != "IngressNodeFirewall" {
+            return Err("Unexpected kind in yaml");
+        }
+
+        Ok(())
+    }
+}
