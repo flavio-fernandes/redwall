@@ -1,5 +1,5 @@
 extern crate strict_yaml_rust;
-use std::{fs, error::Error, str::FromStr, collections::HashMap};
+use std::{fs, error::Error, str::FromStr, collections::HashMap, cmp::Ordering};
 
 use strict_yaml_rust::{StrictYamlLoader, StrictYamlEmitter, StrictYaml};
 
@@ -219,8 +219,13 @@ impl IngressNodeFirewall {
             }
             _ => {}
         }
+        rules.sort_by(|a, b| IngressNodeFirewall::compare_ingress_rule_order(a, b));
 
         Some(Ingress{from_cidr, rules})
+    }
+
+    fn compare_ingress_rule_order(a: &HashMap<String, String>, b: &HashMap<String, String>) -> Ordering {
+        Ordering::Less
     }
 
     fn parse_ingress_rule(doc: &StrictYaml) -> Option<HashMap<String, String>> {
