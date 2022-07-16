@@ -145,8 +145,7 @@ impl NodeEndpoint {
 
 pub struct IngressNodeFirewall {
     pub name: String,
-    // pub labels: Vec<String>,
-    // pub interfaces: Vec<String>,
+    pub node_endpoint: String,
 }
 
 impl IngressNodeFirewall {
@@ -156,8 +155,10 @@ impl IngressNodeFirewall {
             Err(e) => {eprintln!("failed to parse fw: {}", e); return None},
         }
 
-        // Err("Not implemented")
-        None
+        let name = String::from_str(doc["metadata"]["name"].as_str().unwrap()).unwrap();
+        let node_endpoint = String::from_str(doc["metadata"]["annotations"]["node-endpoint"].as_str().unwrap()).unwrap();
+
+        Some(IngressNodeFirewall{name, node_endpoint})
     }
 
     pub fn validate(doc: &StrictYaml) -> Result<(), &'static str> {
@@ -166,6 +167,12 @@ impl IngressNodeFirewall {
         }
         if doc["kind"].as_str().unwrap() != "IngressNodeFirewall" {
             return Err("Unexpected kind in yaml");
+        }
+        if doc["metadata"]["name"].is_badvalue() {
+            return Err("Name not found in IngressNodeFirewall");
+        }
+        if doc["metadata"]["annotations"]["node-endpoint"].is_badvalue() {
+            return Err("node-endpoint not found in IngressNodeFirewall annotations");
         }
 
         Ok(())
