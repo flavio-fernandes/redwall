@@ -2,7 +2,7 @@ use std::{fs, str::FromStr};
 use std::error::Error;
 use std::{net, process};
 
-use redwall::NodeFirewalls;
+use redwall::NodeFirewallDocs;
 use redwall_common::PacketLog;
 
 use aya::{include_bytes_aligned, Bpf, maps::{HashMap, perf::AsyncPerfEventArray}};
@@ -31,13 +31,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn run(opt: &Opt) -> Result<(), Box<dyn Error>> {   
    
-    let node_firewalls = NodeFirewalls::new(&opt.filename).unwrap_or_else(|err| {
+    let docs = NodeFirewallDocs::new(&opt.filename).unwrap_or_else(|err| {
         eprintln!("Problem parsing yaml file {}: {}", opt.filename, err);
         process::exit(1);
     });
-    node_firewalls.validate().unwrap_or_else(|error| {
+    docs.validate().unwrap_or_else(|error| {
         eprintln!("Problem validating yaml file {}: {}", opt.filename, error);
         process::exit(2);
+    });
+    let nodes = docs.get_nodes().unwrap_or_else(|err| {
+        eprintln!("Problem getting nodes deon yaml {}", opt.filename);
+        process::exit(3);
     });
 
 
